@@ -26,6 +26,12 @@ has 'current_room' => (
   isa => 'Room',
 );
 
+has 'session' => (
+  is => 'rw',
+  isa => 'HashRef',
+  default => sub { {} },
+);
+
 sub move {
   my ($self) = @_;
 
@@ -74,12 +80,12 @@ has 'options' => (
 
 has 'prompt' => (
   is => 'rw',
-  default => 'Yes or No?',
+  default => '(y)es or (n)o?',
 );
 
 has 'exception' => (
   is => 'rw',
-  default => 'That is an invalid response, Yes or No?',
+  default => '(y)es or (n)o?',
 );
 
 sub ask {
@@ -110,7 +116,13 @@ package Room;
 use Moose;
 
 has description => (
-  is => 'ro',
+  is => 'rw',
+);
+
+has session => (
+  is => 'rw',
+  isa => 'HashRef',
+  default => sub { {} },
 );
 
 has n => (
@@ -178,10 +190,25 @@ my $dungeon = Room->new(
   description => "You find yourself in room. There are doors on all 4 walls.",
   n => Room->new(
     description => "The room you have entered is rather dark. You hear someone breathing in the corner.",
+    session => {
+      game_tries => 0,
+      game_declines => 0,
+    },
     game => sub {
-      my ($player) = @_;
-      say "Hello " . $player->name . "... you want to play a game?";
-      
+      my ($room, $player) = @_;
+      sleep 1;
+      say "Mysterious Person: Hello " . $player->name . "... you want to play a game?";
+      my $y_or_n = Question->new()->ask;
+      if ($y_or_n eq 'y') { 
+        $room->session->{game_tries}++;
+      }
+      else {
+        sleep 1;
+        say "You: I don't think so... but thanks anyways...";
+        sleep 1;
+        say "Mysterious Person: you're going to regret this!";
+        $room->session->{game_denies}++;
+      }
     },
   ),
   s => Room->new(
@@ -208,12 +235,18 @@ my $player = Player->new(
   current_room => $dungeon,
 );
 
-say "Your name is " . $player->name;
+say "";
+say "Welcome to the Baerg Mansion, " . $player->name . "!";
+say "";
+say "Enter 'q' to quit";
 while ($player->health > 0) {
+  sleep 1;
+  say '';
   say $player->current_room->description;
   if (defined $player->current_room->game) {
-    $player->current_room->game->($player);
+    $player->current_room->game->($player->current_room, $player);
   }
+  say '';
   $player->move();
 }
 
